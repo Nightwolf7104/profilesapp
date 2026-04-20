@@ -1,121 +1,106 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from "react";
+import {
+  Button,
+  Heading,
+  Flex,
+  View,
+  Grid,
+  Divider,
+} from "@aws-amplify/ui-react";
+import { useAuthenticator } from "@aws-amplify/ui-react";
+import { Amplify } from "aws-amplify";
+import "@aws-amplify/ui-react/styles.css";
+import { generateClient } from "aws-amplify/data";
+import outputs from "../amplify_outputs.json";
 
-function App() {
-  const [count, setCount] = useState(0)
+Amplify.configure(outputs);
+
+const client = generateClient({
+  authMode: "userPool",
+});
+
+export default function App() {
+  const [userprofiles, setUserProfiles] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const { user, signOut } = useAuthenticator((context) => [context.user]);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  async function fetchUserProfile() {
+    try {
+      const { data: profiles } = await client.models.UserProfile.list();
+      setUserProfiles(profiles || []);
+    } catch (err) {
+      console.error("Error fetching user profiles:", err);
+      setError("Failed to load profile data.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <Flex
+      className="App"
+      justifyContent="center"
+      alignItems="center"
+      direction="column"
+      width="70%"
+      margin="0 auto"
+      padding="2rem"
+    >
+      <Heading level={1}>My Profile</Heading>
+
+      <p style={{ fontSize: "1.2rem", fontWeight: "bold", margin: "1rem 0" }}>
+        Akhil Saraswatula
+      </p>
+
+      <Divider />
+
+      {loading && <p style={{ margin: "2rem 0" }}>Loading profile...</p>}
+
+      {error && <p style={{ margin: "2rem 0", color: "red" }}>{error}</p>}
+
+      {!loading && !error && (
+        <Grid
+          margin="3rem 0"
+          autoFlow="row"
+          justifyContent="center"
+          gap="2rem"
+          alignContent="center"
         >
-          Count is {count}
-        </button>
-      </section>
+          {userprofiles.length > 0 ? (
+            userprofiles.map((userprofile) => (
+              <Flex
+                key={userprofile.id || userprofile.email}
+                direction="column"
+                justifyContent="center"
+                alignItems="center"
+                gap="1rem"
+                border="1px solid #ccc"
+                padding="2rem"
+                borderRadius="12px"
+                className="box"
+              >
+                <View>
+                  <Heading level={3}>{userprofile.email}</Heading>
+                </View>
+              </Flex>
+            ))
+          ) : (
+            <p>No profile records found.</p>
+          )}
+        </Grid>
+      )}
 
-      <div className="ticks"></div>
+      <p style={{ marginBottom: "1rem" }}>
+        Signed in as: {user?.signInDetails?.loginId || user?.username}
+      </p>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <Button onClick={signOut}>Sign Out</Button>
+    </Flex>
+  );
 }
-
-export default App
